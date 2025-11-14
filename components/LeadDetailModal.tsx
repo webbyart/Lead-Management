@@ -24,6 +24,19 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({ lead, onClose }) => {
   const [follow_up_date, setFollowUpDate] = useState(lead.follow_up_date || '');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const calculateAge = (dobString: string | null) => {
+    if (!dobString) return null;
+    const birthDate = new Date(dobString);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
+  };
+  const age = calculateAge(lead.birth_date);
+
   const handleUpdate = async () => {
     setIsLoading(true);
     setMessage(null);
@@ -140,6 +153,7 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({ lead, onClose }) => {
                                  <p><strong>ผู้มอบหมาย:</strong> {lead.admin_submitter}</p>
                                  <p><strong>ได้รับเมื่อ:</strong> {new Date(lead.created_at).toLocaleString()}</p>
                                  <p><strong>เซลล์ผู้รับผิดชอบ:</strong> {lead.assigned_sales_name}</p>
+                                 {age && <p><strong>Age:</strong> {age} years old</p>}
                              </div>
                          </div>
                          <div className="bg-gray-50 p-4 rounded-lg border">

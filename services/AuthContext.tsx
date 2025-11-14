@@ -7,11 +7,15 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   loginSales: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
-  loginAdmin: (pass: string) => Promise<{ success: boolean; message: string }>;
+  loginAdmin: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<{ success: boolean; message: string }>;
   salesRoster: SalesPerson[];
   toggleSalesStatus: (salesId: string) => Promise<void>;
+  registerAdmin: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
+  registerSales: (name: string, email: string, pass: string) => Promise<{ success: boolean; message: string }>;
+  updateSalesPerson: (id: string, updates: { name: string }) => Promise<{ success: boolean; message: string }>;
+  deleteSalesPerson: (id: string) => Promise<{ success: boolean; message: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,7 +57,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                  setUser({
                     id: session.user.id,
                     type: 'admin',
-                    name: 'Admin',
+                    name: session.user.email?.split('@')[0] || 'Admin',
                     email: session.user.email ?? 'admin@admin.com',
                 });
             }
@@ -109,10 +113,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return { success: true, message: 'Login successful!' };
   }, []);
 
-  const loginAdmin = useCallback(async (pass: string): Promise<{ success: boolean; message: string }> => {
-    // In a real app, admin would have a role. Here we sign in a specific user.
-    const adminEmail = 'admin@admin.com';
-    const { error } = await supabase.auth.signInWithPassword({ email: adminEmail, password: pass });
+  const loginAdmin = useCallback(async (email: string, pass: string): Promise<{ success: boolean; message: string }> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
     if(error) return { success: false, message: 'Invalid admin credentials' };
     return { success: true, message: 'Admin login successful!' };
   }, []);
@@ -158,10 +160,80 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }
   }, [salesRoster, user]);
+  
+  const registerAdmin = useCallback(async (email: string, pass: string): Promise<{ success: boolean; message: string }> => {
+    const { error } = await supabase.auth.signUp({ email, password: pass });
+    if (error) {
+      return { success: false, message: error.message };
+    }
+    return { success: true, message: 'Admin registration successful! Please check your email to confirm.' };
+  }, []);
+
+  const registerSales = useCallback(async (name: string, email: string, pass: string): Promise<{ success: boolean; message: string }> => {
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password: pass,
+    });
+
+    if (signUpError) {
+      return { success: false, message: signUpError.message };
+    }
+    if (!signUpData.user) {
+        return { success: false, message: 'Registration failed: user not created.' };
+    }
+
+    const { error: profileError } = await supabase.from('sales_persons').insert([
+      {
+        id: signUpData.user.id,
+        name,
+        email,
+        status: 'offline',
+      },
+    ]);
+
+    if (profileError) {
+      console.error('Failed to create sales profile:', profileError);
+      // The error '[object Object]' suggests the error isn't being stringified correctly.
+      // We will explicitly use the 'message' property to ensure a clean error string.
+      const errorMessage = profileError.message || 'An unknown database error occurred';
+      return { 
+        success: false, 
+        message: `User registered, but failed to create sales profile: ${errorMessage}. Please contact an admin.` 
+      };
+    }
+
+    return { success: true, message: 'Sales registration successful! Please check your email to confirm.' };
+  }, []);
+
+  const updateSalesPerson = useCallback(async (id: string, updates: { name: string }): Promise<{ success: boolean; message: string }> => {
+    const { error } = await supabase
+      .from('sales_persons')
+      .update({ name: updates.name })
+      .eq('id', id);
+    if (error) {
+      return { success: false, message: error.message };
+    }
+    return { success: true, message: 'Sales person updated successfully.' };
+  }, []);
+
+  const deleteSalesPerson = useCallback(async (id: string): Promise<{ success: boolean; message: string }> => {
+    // This only deletes the sales profile. The user will still exist in Supabase Auth
+    // and will be treated as an admin by the app. A proper implementation would require
+    // a backend function to delete the auth.users record.
+    const { error } = await supabase
+      .from('sales_persons')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      return { success: false, message: error.message };
+    }
+    return { success: true, message: 'Sales person deleted. Note: The user account still exists and may need to be manually removed from Authentication settings.' };
+  }, []);
 
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, loginSales, loginAdmin, logout, sendPasswordReset, salesRoster, toggleSalesStatus }}>
+    <AuthContext.Provider value={{ user, isLoading, loginSales, loginAdmin, logout, sendPasswordReset, salesRoster, toggleSalesStatus, registerAdmin, registerSales, updateSalesPerson, deleteSalesPerson }}>
       {children}
     </AuthContext.Provider>
   );

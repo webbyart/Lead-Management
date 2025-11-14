@@ -14,6 +14,7 @@ interface LeadContextType {
   reassignIdleLeads: () => Promise<{ message: string; reassignments: { leadId: string; oldSales: string; newSales: string }[] }>;
   checkFollowUpTasks: () => Lead[];
   getTodaysBirthdaysGlobally: () => Lead[];
+  getThisMonthsBirthdays: () => Lead[];
 }
 
 const LeadContext = createContext<LeadContextType | undefined>(undefined);
@@ -241,6 +242,17 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return leads.filter(lead => lead.birth_date && lead.birth_date.slice(5) === todayMMDD);
   }, [leads]);
 
+  const getThisMonthsBirthdays = useCallback(() => {
+      const today = new Date();
+      const currentMonth = today.getMonth();
+      return leads.filter(lead => {
+          if (!lead.birth_date) return false;
+          // Adding 'T00:00:00' to handle timezone issues where date might shift
+          const birthDate = new Date(lead.birth_date + 'T00:00:00');
+          return birthDate.getMonth() === currentMonth;
+      });
+  }, [leads]);
+
 
   const contextValue = {
       leads,
@@ -252,7 +264,8 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       checkReminders,
       reassignIdleLeads,
       checkFollowUpTasks,
-      getTodaysBirthdaysGlobally
+      getTodaysBirthdaysGlobally,
+      getThisMonthsBirthdays,
   };
 
   return (

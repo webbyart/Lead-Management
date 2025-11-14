@@ -4,7 +4,7 @@ import { useAuth } from '../services/AuthContext';
 import { Program, SalesPerson, CallStatus, Lead } from '../types';
 import { PlusIcon, DocumentArrowDownIcon, UsersIcon, PresentationChartLineIcon, CalendarIcon, ChartBarIcon } from './Icons';
 
-const StatCard: React.FC<{ title: string; value: string | number; change: number; icon: React.ReactNode; }> = ({ title, value, change, icon }) => (
+const StatCard: React.FC<{ title: string; value: string | number; change?: number; icon: React.ReactNode; }> = ({ title, value, change, icon }) => (
     <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
         <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-gray-500 font-thai">{title}</p>
@@ -12,21 +12,19 @@ const StatCard: React.FC<{ title: string; value: string | number; change: number
         </div>
         <div className="mt-2">
             <p className="text-3xl font-bold text-gray-800">{value}</p>
-            <div className="flex items-center text-sm mt-1">
-                <span className={`flex items-center ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {change >= 0 ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" />
-                        </svg>
-                    ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.707-4.707l-3-3a1 1 0 011.414-1.414L9 10.586V7a1 1 0 112 0v3.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                    )}
-                    {Math.abs(change).toFixed(2)}%
-                </span>
-                <span className="text-gray-500 ml-1">vs last month</span>
-            </div>
+            {change !== undefined && (
+                <div className="flex items-center text-sm mt-1">
+                    <span className={`flex items-center ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {change >= 0 ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" /></svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.707-4.707l-3-3a1 1 0 011.414-1.414L9 10.586V7a1 1 0 112 0v3.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
+                        )}
+                        {Math.abs(change).toFixed(2)}%
+                    </span>
+                    <span className="text-gray-500 ml-1">vs last month</span>
+                </div>
+            )}
         </div>
     </div>
 );
@@ -49,44 +47,46 @@ const GoalProgress: React.FC<{title: string, value: number, goal: number, format
     );
 };
 
-const StatusPieChart: React.FC<{ data: {name: string, value: number}[] }> = ({ data }) => {
-    const colors = ['#34D399', '#60A5FA', '#FBBF24', '#A78BFA', '#F87171'];
-    const total = data.reduce((acc, item) => acc + item.value, 0);
-    if (total === 0) return <div className="flex items-center justify-center h-full"><p className="text-gray-500">No data to display</p></div>;
-    
-    let cumulativePercent = 0;
-    const gradients = data.map((item, index) => {
-        const percent = (item.value / total) * 100;
-        const color = colors[index % colors.length];
-        const gradientPart = `${color} ${cumulativePercent}% ${cumulativePercent + percent}%`;
-        cumulativePercent += percent;
-        return gradientPart;
-    });
+const BirthdayReport: React.FC = () => {
+    const { getTodaysBirthdaysGlobally, getThisMonthsBirthdays } = useLeads();
+    const todaysBirthdays = getTodaysBirthdaysGlobally();
+    const thisMonthsBirthdays = getThisMonthsBirthdays();
 
     return (
-        <div className="flex flex-col items-center">
-            <div className="w-40 h-40 rounded-full" style={{ background: `conic-gradient(${gradients.join(', ')})` }}></div>
-             <div className="mt-4 w-full space-y-2">
-                {data.map((item, index) => (
-                    <div key={item.name} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center">
-                            <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: colors[index % colors.length] }}></span>
-                            <span className="font-thai">{item.name}</span>
-                        </div>
-                        <span className="font-semibold text-gray-700">{item.value}</span>
-                    </div>
-                ))}
-            </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+             <h3 className="text-lg font-bold text-gray-800 font-thai mb-4">Birthday Report</h3>
+             <div className="space-y-4">
+                <div>
+                    <h4 className="font-semibold text-gray-700 font-thai">Today's Birthdays ({todaysBirthdays.length})</h4>
+                    {todaysBirthdays.length > 0 ? (
+                        <ul className="mt-2 space-y-1 text-sm text-gray-600 max-h-24 overflow-y-auto">
+                            {todaysBirthdays.map(lead => (
+                                <li key={lead.id}>🎂 {lead.first_name} {lead.last_name} ({lead.assigned_sales_name})</li>
+                            ))}
+                        </ul>
+                    ) : <p className="text-sm text-gray-500 mt-1">No birthdays today.</p>}
+                </div>
+                 <div>
+                    <h4 className="font-semibold text-gray-700 font-thai">This Month's Birthdays ({thisMonthsBirthdays.length})</h4>
+                    {thisMonthsBirthdays.length > 0 ? (
+                        <ul className="mt-2 space-y-1 text-sm text-gray-600 max-h-24 overflow-y-auto">
+                            {thisMonthsBirthdays.map(lead => (
+                                <li key={lead.id}>🎉 {lead.first_name} {lead.last_name} ({lead.assigned_sales_name})</li>
+                            ))}
+                        </ul>
+                    ) : <p className="text-sm text-gray-500 mt-1">No birthdays this month.</p>}
+                </div>
+             </div>
         </div>
-    );
-};
+    )
+}
 
 const AdminView: React.FC = () => {
   const { leads } = useLeads();
   const { salesRoster } = useAuth();
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
 
-  const { stats, performance, statusDistribution, goalStats } = useMemo(() => {
+  const { stats, performance, goalStats } = useMemo(() => {
     const totalLeads = leads.length;
     const closedWonLeads = leads.filter(l => l.call_status === CallStatus.ClosedWon);
     const totalSalesValue = closedWonLeads.reduce((sum, lead) => sum + lead.sale_value, 0);
@@ -97,23 +97,7 @@ const AdminView: React.FC = () => {
         totalSalesValue,
         conversionRate: `${conversionRate.toFixed(1)}%`,
         uncalledLeads: leads.filter(l => l.call_status === CallStatus.Uncalled).length,
-        awaitingPayment: 683745.34, // Mock data
-        forecast: 934000.00, // Mock data
     };
-    
-    const statusDistributionRaw = leads.reduce((acc, lead) => {
-        const status = lead.call_status;
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-    }, {} as {[key: string]: number});
-
-    const statusDistributionData = [
-        {name: 'โอกาสใหม่', value: statusDistributionRaw[CallStatus.Contacted] || 0},
-        {name: 'เสนอราคา', value: statusDistributionRaw[CallStatus.Quotation] || 0},
-        {name: 'ต่อรองราคา', value: statusDistributionRaw[CallStatus.Negotiation] || 0},
-        {name: 'LOST', value: statusDistributionRaw[CallStatus.ClosedLost] || 0},
-        {name: 'WIN', value: statusDistributionRaw[CallStatus.ClosedWon] || 0},
-    ].filter(item => item.value > 0);
     
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const goalStatsData = {
@@ -147,8 +131,45 @@ const AdminView: React.FC = () => {
         };
     }).sort((a,b) => b.salesValue - a.salesValue);
 
-    return { stats: statsData, performance: performanceData, statusDistribution: statusDistributionData, goalStats: goalStatsData };
+    return { stats: statsData, performance: performanceData, goalStats: goalStatsData };
   }, [leads, salesRoster]);
+  
+  const handleExport = () => {
+    if (performance.length === 0) return;
+    const dataToExport = performance.map(p => ({
+      "Salesperson": p.name,
+      "Leads Count": p.leadsCount,
+      "Sales Value": p.salesValue,
+      "Conversion Rate (%)": p.conversionRate.toFixed(2),
+      "Contacted": p.statusCounts.contacted,
+      "Quotation": p.statusCounts.quotation,
+      "Negotiation": p.statusCounts.negotiation,
+      "Lost": p.statusCounts.lost,
+      "Won": p.statusCounts.won,
+    }));
+
+    const csvRows = [];
+    const headers = Object.keys(dataToExport[0]);
+    csvRows.push(headers.join(','));
+
+    for (const row of dataToExport) {
+        const values = headers.map(header => {
+            const escaped = (''+row[header]).replace(/"/g, '\\"');
+            return `"${escaped}"`;
+        });
+        csvRows.push(values.join(','));
+    }
+    
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8,' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'sales_performance_report.csv');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   return (
     <div className="space-y-6">
@@ -158,9 +179,9 @@ const AdminView: React.FC = () => {
                 <p className="text-sm text-gray-500 mt-1">ภาพรวมประสิทธิภาพของทีมขายทั้งหมด</p>
             </div>
              <div className="flex items-center space-x-2 mt-3 sm:mt-0">
-                <button onClick={() => {}} className="px-4 py-2 bg-white text-gray-700 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium text-sm transition-colors flex items-center">
+                <button onClick={handleExport} className="px-4 py-2 bg-white text-gray-700 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium text-sm transition-colors flex items-center">
                     <DocumentArrowDownIcon className="w-5 h-5 mr-2" />
-                    Export
+                    Export CSV
                 </button>
                 <button onClick={() => setIsFormModalOpen(true)} className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-gray-900 font-medium text-sm transition-colors flex items-center">
                     <PlusIcon className="w-5 h-5 mr-2" />
@@ -170,10 +191,10 @@ const AdminView: React.FC = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            <StatCard title="จำนวนลูกค้าเคลื่อนไหว" value={stats.totalLeads} change={5.45} icon={<UsersIcon className="w-6 h-6 text-gray-400"/>} />
-            <StatCard title="ยอดขาย" value={`฿${(stats.totalSalesValue/1000).toFixed(1)}K`} change={4.59} icon={<PresentationChartLineIcon className="w-6 h-6 text-gray-400"/>} />
-            <StatCard title="รอชำระเงิน" value={`฿${(stats.awaitingPayment/1000).toFixed(1)}K`} change={-0.24} icon={<CalendarIcon className="w-6 h-6 text-gray-400"/>} />
-            <StatCard title="คาดการณ์ยอดใหม่" value={`฿${(stats.forecast/1000).toFixed(1)}K`} change={-3.43} icon={<ChartBarIcon className="w-6 h-6 text-gray-400"/>} />
+            <StatCard title="Total Leads" value={stats.totalLeads} change={5.45} icon={<UsersIcon className="w-6 h-6 text-gray-400"/>} />
+            <StatCard title="Total Sales" value={`฿${(stats.totalSalesValue/1000).toFixed(1)}K`} change={4.59} icon={<PresentationChartLineIcon className="w-6 h-6 text-gray-400"/>} />
+            <StatCard title="Conversion Rate" value={stats.conversionRate} change={1.2} icon={<CalendarIcon className="w-6 h-6 text-gray-400"/>} />
+            <StatCard title="Uncalled Leads" value={stats.uncalledLeads} change={-3.43} icon={<ChartBarIcon className="w-6 h-6 text-gray-400"/>} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -184,43 +205,41 @@ const AdminView: React.FC = () => {
                  <GoalProgress title="ยอดขาย (รายได้)" value={goalStats.revenue} goal={3834000} formatAsCurrency />
                  <GoalProgress title="กำไร (%)" value={63.41} goal={100} />
             </div>
-            <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <h3 className="text-lg font-bold text-gray-800 font-thai mb-4">สถานะงาน</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                   <div className="md:col-span-1">
-                       <StatusPieChart data={statusDistribution} />
-                   </div>
-                   <div className="md:col-span-2">
-                       <div className="overflow-x-auto">
-                           <table className="w-full text-sm text-left text-gray-500">
-                               <thead className="text-xs text-gray-700 uppercase bg-gray-50 font-thai">
-                                   <tr>
-                                       <th scope="col" className="px-4 py-3">ชื่อพนักงาน</th>
-                                       <th scope="col" className="px-4 py-3 text-center">โอกาสใหม่</th>
-                                       <th scope="col" className="px-4 py-3 text-center">เสนอราคา</th>
-                                       <th scope="col" className="px-4 py-3 text-center">ต่อรอง</th>
-                                       <th scope="col" className="px-4 py-3 text-center">Lost</th>
-                                       <th scope="col" className="px-4 py-3 text-center">Win</th>
-                                   </tr>
-                               </thead>
-                               <tbody>
-                                   {performance.slice(0, 6).map((p) => (
-                                       <tr key={p.name} className="bg-white border-b hover:bg-gray-50">
-                                           <td className="px-4 py-4 font-medium text-gray-900">{p.name}</td>
-                                           <td className="px-4 py-4 text-center">{p.statusCounts.contacted}</td>
-                                           <td className="px-4 py-4 text-center">{p.statusCounts.quotation}</td>
-                                           <td className="px-4 py-4 text-center">{p.statusCounts.negotiation}</td>
-                                           <td className="px-4 py-4 text-center text-red-500 font-medium">{p.statusCounts.lost}</td>
-                                           <td className="px-4 py-4 text-center text-green-500 font-medium">{p.statusCounts.won}</td>
-                                       </tr>
-                                   ))}
-                               </tbody>
-                           </table>
-                       </div>
-                   </div>
-                </div>
+            <div className="lg:col-span-2">
+               <BirthdayReport />
             </div>
         </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+             <h3 className="text-lg font-bold text-gray-800 font-thai mb-4">Sales Performance</h3>
+              <div className="overflow-x-auto">
+                   <table className="w-full text-sm text-left text-gray-500">
+                       <thead className="text-xs text-gray-700 uppercase bg-gray-50 font-thai">
+                           <tr>
+                               <th scope="col" className="px-4 py-3">ชื่อพนักงาน</th>
+                               <th scope="col" className="px-4 py-3 text-center">Leads</th>
+                               <th scope="col" className="px-4 py-3 text-center">Sales Value</th>
+                               <th scope="col" className="px-4 py-3 text-center">Conv. Rate</th>
+                               <th scope="col" className="px-4 py-3 text-center">Won</th>
+                               <th scope="col" className="px-4 py-3 text-center">Lost</th>
+                           </tr>
+                       </thead>
+                       <tbody>
+                           {performance.map((p) => (
+                               <tr key={p.name} className="bg-white border-b hover:bg-gray-50">
+                                   <td className="px-4 py-4 font-medium text-gray-900">{p.name}</td>
+                                   <td className="px-4 py-4 text-center">{p.leadsCount}</td>
+                                   <td className="px-4 py-4 text-center">฿{p.salesValue.toLocaleString()}</td>
+                                   <td className="px-4 py-4 text-center">{p.conversionRate.toFixed(1)}%</td>
+                                   <td className="px-4 py-4 text-center text-green-500 font-medium">{p.statusCounts.won || 0}</td>
+                                   <td className="px-4 py-4 text-center text-red-500 font-medium">{p.statusCounts.lost || 0}</td>
+                               </tr>
+                           ))}
+                       </tbody>
+                   </table>
+               </div>
+        </div>
+
 
         {isFormModalOpen && <AdminLeadFormModal onClose={() => setIsFormModalOpen(false)} />}
     </div>
@@ -304,7 +323,7 @@ const AdminLeadFormModal: React.FC<{onClose: () => void}> = ({onClose}) => {
                     </div>
                     <div className="md:col-span-2">
                         <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1 font-thai">ที่อยู่ (ถ้ามี)</label>
-                        <textarea id="address" value={address} rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-dark focus:border-primary-dark transition" placeholder="123 ถ.สุขุมวิท กรุงเทพฯ"></textarea>
+                        <textarea id="address" rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-dark focus:border-primary-dark transition" placeholder="123 ถ.สุขุมวิท กรุงเทพฯ"></textarea>
                     </div>
                     <div className="md:col-span-2">
                         <label htmlFor="program" className="block text-sm font-medium text-gray-700 mb-1 font-thai">โปรแกรมที่สนใจ</label>
