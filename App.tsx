@@ -49,7 +49,7 @@ const AppShell: React.FC = () => {
                 <div className="flex items-center justify-between h-16">
                     <div className="flex items-center">
                         <div className="flex-shrink-0">
-                            <h1 className="text-2xl font-bold text-secondary font-thai">JUBILI</h1>
+                            <h1 className="text-2xl font-bold text-secondary font-thai">SYSTEM</h1>
                         </div>
                         <span className="text-secondary font-semibold ml-4 pl-4 border-l border-amber-600/50">บริการงานขาย</span>
                     </div>
@@ -145,7 +145,7 @@ const PublicShell: React.FC<{ onLoginRequest: (type: 'adminLogin' | 'salesLogin'
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                 <div className="flex flex-col sm:flex-row justify-between items-center">
                     <h1 className="text-3xl font-bold text-secondary font-thai">
-                       JUBILI <span className="text-primary">Lead Management</span>
+                       SYSTEM <span className="text-primary">Lead Management</span>
                     </h1>
                      <div className="flex items-center space-x-2 mt-3 sm:mt-0">
                          <button onClick={() => onLoginRequest('adminLogin')} className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-gray-900 transition-colors text-sm font-medium">
@@ -203,8 +203,18 @@ const PublicShell: React.FC<{ onLoginRequest: (type: 'adminLogin' | 'salesLogin'
 }
 
 const AppContent: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [view, setView] = useState<'public' | 'adminLogin' | 'salesLogin'>('public');
+
+  if (isLoading) {
+    return (
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+            <div className="text-center">
+                <h2 className="text-2xl font-semibold text-gray-700">Loading Application...</h2>
+            </div>
+        </div>
+    );
+  }
 
   if (user) {
     return <AppShell />;

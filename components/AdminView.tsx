@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLeads } from '../services/LeadContext';
 import { useAuth } from '../services/AuthContext';
-import { Program, SalesPerson, CallStatus } from '../types';
-// FIX: Imported missing icon components
+import { Program, SalesPerson, CallStatus, Lead } from '../types';
 import { PlusIcon, DocumentArrowDownIcon, UsersIcon, PresentationChartLineIcon, CalendarIcon, ChartBarIcon } from './Icons';
 
 const StatCard: React.FC<{ title: string; value: string | number; change: number; icon: React.ReactNode; }> = ({ title, value, change, icon }) => (
@@ -33,7 +32,7 @@ const StatCard: React.FC<{ title: string; value: string | number; change: number
 );
 
 const GoalProgress: React.FC<{title: string, value: number, goal: number, formatAsCurrency?: boolean}> = ({ title, value, goal, formatAsCurrency }) => {
-    const percentage = Math.min((value / goal) * 100, 100);
+    const percentage = goal > 0 ? Math.min((value / goal) * 100, 100) : 0;
     const displayValue = formatAsCurrency ? `฿${value.toLocaleString()}` : value.toLocaleString();
     const displayGoal = formatAsCurrency ? `฿${goal.toLocaleString()}` : goal.toLocaleString();
 
@@ -83,11 +82,73 @@ const StatusPieChart: React.FC<{ data: {name: string, value: number}[] }> = ({ d
 };
 
 const AdminView: React.FC = () => {
-  const { getDashboardStats } = useLeads();
+  const { leads } = useLeads();
   const { salesRoster } = useAuth();
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
 
-  const { stats, performance, statusDistribution, goalStats } = useMemo(() => getDashboardStats(), [getDashboardStats]);
+  const { stats, performance, statusDistribution, goalStats } = useMemo(() => {
+    const totalLeads = leads.length;
+    const closedWonLeads = leads.filter(l => l.call_status === CallStatus.ClosedWon);
+    const totalSalesValue = closedWonLeads.reduce((sum, lead) => sum + lead.sale_value, 0);
+    const conversionRate = totalLeads > 0 ? (closedWonLeads.length / totalLeads) * 100 : 0;
+    
+    const statsData = {
+        totalLeads,
+        totalSalesValue,
+        conversionRate: `${conversionRate.toFixed(1)}%`,
+        uncalledLeads: leads.filter(l => l.call_status === CallStatus.Uncalled).length,
+        awaitingPayment: 683745.34, // Mock data
+        forecast: 934000.00, // Mock data
+    };
+    
+    const statusDistributionRaw = leads.reduce((acc, lead) => {
+        const status = lead.call_status;
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+    }, {} as {[key: string]: number});
+
+    const statusDistributionData = [
+        {name: 'โอกาสใหม่', value: statusDistributionRaw[CallStatus.Contacted] || 0},
+        {name: 'เสนอราคา', value: statusDistributionRaw[CallStatus.Quotation] || 0},
+        {name: 'ต่อรองราคา', value: statusDistributionRaw[CallStatus.Negotiation] || 0},
+        {name: 'LOST', value: statusDistributionRaw[CallStatus.ClosedLost] || 0},
+        {name: 'WIN', value: statusDistributionRaw[CallStatus.ClosedWon] || 0},
+    ].filter(item => item.value > 0);
+    
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const goalStatsData = {
+        newCustomers: leads.filter(l => l.created_at > thirtyDaysAgo).length,
+        opportunities: leads.filter(l => [CallStatus.Contacted, CallStatus.Appointment, CallStatus.FollowUp, CallStatus.Negotiation, CallStatus.Quotation].includes(l.call_status)).length,
+        revenue: totalSalesValue,
+        profit: totalSalesValue * 0.6341, // Mock profit margin
+    };
+
+    const performanceData = salesRoster.map(sales => {
+        const salesLeads = leads.filter(l => l.assigned_sales_id === sales.id);
+        const salesClosedWon = salesLeads.filter(l => l.call_status === CallStatus.ClosedWon);
+        const salesValue = salesClosedWon.reduce((sum, lead) => sum + lead.sale_value, 0);
+        const statusCounts = salesLeads.reduce((acc, lead) => {
+            acc[lead.call_status] = (acc[lead.call_status] || 0) + 1;
+            return acc;
+        }, {} as {[key: string]: number});
+
+        return {
+            name: sales.name,
+            leadsCount: salesLeads.length,
+            salesValue,
+            conversionRate: salesLeads.length > 0 ? (salesClosedWon.length / salesLeads.length) * 100 : 0,
+            statusCounts: {
+                contacted: statusCounts[CallStatus.Contacted] || 0,
+                quotation: statusCounts[CallStatus.Quotation] || 0,
+                negotiation: statusCounts[CallStatus.Negotiation] || 0,
+                lost: statusCounts[CallStatus.ClosedLost] || 0,
+                won: statusCounts[CallStatus.ClosedWon] || 0,
+            }
+        };
+    }).sort((a,b) => b.salesValue - a.salesValue);
+
+    return { stats: statsData, performance: performanceData, statusDistribution: statusDistributionData, goalStats: goalStatsData };
+  }, [leads, salesRoster]);
 
   return (
     <div className="space-y-6">
@@ -170,7 +231,7 @@ const AdminView: React.FC = () => {
 
 const AdminLeadFormModal: React.FC<{onClose: () => void}> = ({onClose}) => {
   const { addLead } = useLeads();
-  const { salesRoster } = useAuth();
+  const { salesRoster, user } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -181,9 +242,7 @@ const AdminLeadFormModal: React.FC<{onClose: () => void}> = ({onClose}) => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   
-  const adminProfile = { name: 'Admin' };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName || !lastName || !phone || !program) {
       setMessage({ type: 'error', text: 'กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อ, นามสกุล, เบอร์โทร)' });
@@ -193,27 +252,29 @@ const AdminLeadFormModal: React.FC<{onClose: () => void}> = ({onClose}) => {
     setIsLoading(true);
     setMessage(null);
 
-    setTimeout(() => {
-      const result = addLead({
-        firstName, lastName, phone,
-        birthDate: birthDate || null,
-        address, program,
-        adminSubmitter: adminProfile.name,
-        assignedSales: manualAssignee,
-      });
+    const result = await addLead({
+      first_name: firstName,
+      last_name: lastName,
+      phone,
+      birth_date: birthDate || null,
+      address,
+      program,
+      admin_submitter: user?.name || 'Admin',
+      // The context will use this name to find the correct sales person ID
+      assigned_sales_name: manualAssignee,
+    } as any);
 
-      if (result.success) {
-        setMessage({ type: 'success', text: result.message });
-        setFirstName(''); setLastName(''); setPhone(''); setBirthDate(''); setAddress(''); setProgram(Program.General); setManualAssignee('');
-        setTimeout(() => {
-            setMessage(null);
-            onClose();
-        }, 2000);
-      } else {
-        setMessage({ type: 'error', text: result.message });
-      }
-      setIsLoading(false);
-    }, 1000);
+    if (result.success) {
+      setMessage({ type: 'success', text: result.message });
+      setFirstName(''); setLastName(''); setPhone(''); setBirthDate(''); setAddress(''); setProgram(Program.General); setManualAssignee('');
+      setTimeout(() => {
+          setMessage(null);
+          onClose();
+      }, 2000);
+    } else {
+      setMessage({ type: 'error', text: result.message });
+    }
+    setIsLoading(false);
   };
   
   return (
@@ -243,7 +304,7 @@ const AdminLeadFormModal: React.FC<{onClose: () => void}> = ({onClose}) => {
                     </div>
                     <div className="md:col-span-2">
                         <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1 font-thai">ที่อยู่ (ถ้ามี)</label>
-                        <textarea id="address" value={address} onChange={(e) => setAddress(e.target.value)} rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-dark focus:border-primary-dark transition" placeholder="123 ถ.สุขุมวิท กรุงเทพฯ"></textarea>
+                        <textarea id="address" value={address} rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-dark focus:border-primary-dark transition" placeholder="123 ถ.สุขุมวิท กรุงเทพฯ"></textarea>
                     </div>
                     <div className="md:col-span-2">
                         <label htmlFor="program" className="block text-sm font-medium text-gray-700 mb-1 font-thai">โปรแกรมที่สนใจ</label>
@@ -278,5 +339,6 @@ const AdminLeadFormModal: React.FC<{onClose: () => void}> = ({onClose}) => {
     </div>
   )
 }
+
 
 export default AdminView;

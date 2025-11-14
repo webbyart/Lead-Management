@@ -22,13 +22,13 @@ const CalendarView: React.FC = () => {
         
         // Process sales follow-ups
         leads.forEach(lead => {
-            if (lead.followUpDate) {
+            if (lead.follow_up_date) {
                 allEvents.push({
                     id: `lead-${lead.id}`,
-                    date: new Date(lead.followUpDate + 'T00:00:00'), // Ensure correct date parsing
-                    title: `${lead.firstName} ${lead.lastName}`,
+                    date: new Date(lead.follow_up_date + 'T00:00:00'), // Ensure correct date parsing
+                    title: `${lead.first_name} ${lead.last_name}`,
                     type: 'Sales Follow-Up',
-                    assignedTo: lead.assignedSales,
+                    assignedTo: lead.assigned_sales_name,
                     bgColor: 'bg-purple-100',
                     textColor: 'text-purple-800'
                 });
@@ -39,8 +39,8 @@ const CalendarView: React.FC = () => {
         appointments.forEach(appt => {
             allEvents.push({
                 id: `appt-${appt.id}`,
-                date: appt.appointmentDate,
-                title: appt.customerName,
+                date: new Date(appt.appointment_date),
+                title: appt.customer_name,
                 type: 'After-Care',
                 assignedTo: 'After Care',
                 bgColor: 'bg-indigo-100',

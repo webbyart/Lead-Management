@@ -25,42 +25,48 @@ export enum CallStatus {
 }
 
 export interface Lead {
-  id: string;
-  firstName: string;
-  lastName: string;
+  id: string; // uuid
+  first_name: string;
+  last_name: string;
   phone: string;
-  birthDate: string | null;
+  birth_date: string | null;
   address: string;
   program: Program;
-  adminSubmitter: string;
-  assignedSales: string;
-  callStatus: CallStatus;
-  saleValue: number;
+  admin_submitter: string;
+  assigned_sales_id: string | null; // uuid
+  assigned_sales_name: string;
+  call_status: CallStatus;
+  sale_value: number;
   notes: string;
-  followUpDate: string | null;
-  appointmentDate?: string | null;
-  createdAt: Date;
+  follow_up_date: string | null;
+  appointment_date?: string | null;
+  created_at: string; // ISO string
+  updated_at: string; // ISO string
 }
 
 export interface SalesPerson {
-  id: string;
+  id: string; // uuid, references auth.users
   name: string;
   status: 'online' | 'offline';
-  lineUserId: string;
+  line_user_id: string | null;
   email: string;
-  password?: string; // Should be handled securely in a real app
+  created_at: string; // ISO string
 }
 
 export interface Appointment {
-  id:string;
-  customerName: string;
-  appointmentDate: Date;
-  followUpType: string; // e.g., '+1 day', '+1 month'
-  assignedTo: string; // Sales name or 'After Care'
+  id: string; // uuid
+  customer_name: string;
+  appointment_date: string; // ISO string
+  follow_up_type: string;
+  assigned_to: string; 
+  lead_id: string; // uuid
+  created_at: string; // ISO string
 }
 
 export type User = {
+  id: string;
   type: 'admin' | 'sales';
   name: string;
+  email: string;
   details?: SalesPerson; // For sales user
 }

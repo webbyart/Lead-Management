@@ -13,28 +13,27 @@ const SystemView: React.FC = () => {
   const [result, setResult] = useState<Result | null>(null);
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
-  const handleAction = (action: () => any, title: string) => {
+  const handleAction = async (action: () => Promise<any> | any, title: string) => {
     setIsLoading(title);
     setResult(null);
-    setTimeout(() => {
-        const actionResult = action();
-        
-        if (title === 'เด้งงาน Lead ค้าง (> 24 ชม.)') {
-            setResult({
-                title,
-                message: actionResult.message,
-                data: actionResult.reassignments
-            });
-        } else {
-            setResult({
-                title,
-                message: actionResult.length > 0 ? `พบ ${actionResult.length} รายการ` : 'ไม่พบรายการที่เข้าเงื่อนไข',
-                data: actionResult
-            });
-        }
+    
+    const actionResult = await action();
+    
+    if (title === 'เด้งงาน Lead ค้าง (> 24 ชม.)') {
+        setResult({
+            title,
+            message: actionResult.message,
+            data: actionResult.reassignments
+        });
+    } else {
+        setResult({
+            title,
+            message: actionResult.length > 0 ? `พบ ${actionResult.length} รายการ` : 'ไม่พบรายการที่เข้าเงื่อนไข',
+            data: actionResult
+        });
+    }
 
-        setIsLoading(null);
-    }, 1000);
+    setIsLoading(null);
   };
   
   const renderResultData = () => {
@@ -46,7 +45,7 @@ const SystemView: React.FC = () => {
               return (
                   <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
                       {(result.data as Lead[]).map(lead => (
-                          <li key={lead.id}>{lead.firstName} {lead.lastName} ({lead.phone}) - มอบหมายให้ {lead.assignedSales}</li>
+                          <li key={lead.id}>{lead.first_name} {lead.last_name} ({lead.phone}) - มอบหมายให้ {lead.assigned_sales_name}</li>
                       ))}
                   </ul>
               );
@@ -54,7 +53,7 @@ const SystemView: React.FC = () => {
                return (
                   <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
                       {(result.data as {leadId: string, oldSales: string, newSales: string}[]).map(item => (
-                          <li key={item.leadId}>Lead ID {item.leadId.slice(-4)}: ย้ายจาก {item.oldSales} -> {item.newSales}</li>
+                          <li key={item.leadId}>Lead ID ...{item.leadId.slice(-4)}: ย้ายจาก {item.oldSales} -> {item.newSales}</li>
                       ))}
                   </ul>
               );
@@ -63,7 +62,7 @@ const SystemView: React.FC = () => {
                 <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
                   {(result.data as Lead[]).map(lead => (
                     <li key={lead.id}>
-                      🎂 {lead.firstName} {lead.lastName} (Client of <span className="font-semibold">{lead.assignedSales}</span>)
+                      🎂 {lead.first_name} {lead.last_name} (Client of <span className="font-semibold">{lead.assigned_sales_name}</span>)
                     </li>
                   ))}
                 </ul>

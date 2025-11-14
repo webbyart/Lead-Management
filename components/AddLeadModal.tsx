@@ -21,7 +21,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, salesPerso
 
     if (!isOpen) return null;
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!firstName || !lastName || !phone) {
             setMessage({ type: 'error', text: 'Please fill in First Name, Last Name, and Phone.' });
@@ -31,40 +31,38 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, salesPerso
         setIsLoading(true);
         setMessage(null);
 
-        setTimeout(() => {
-            const result = addLead({
-                firstName,
-                lastName,
-                phone,
-                birthDate: birthDate || null,
-                address,
-                program,
-                adminSubmitter: `Added by ${salesPerson.name}`, // Or could be the salesperson's name directly
-                assignedSales: salesPerson.name,
-            }, false); // isFromAdmin = false
+        const result = await addLead({
+            first_name: firstName,
+            last_name: lastName,
+            phone,
+            birth_date: birthDate || null,
+            address,
+            program,
+            admin_submitter: `Added by ${salesPerson.name}`,
+            assigned_sales_name: salesPerson.name,
+        } as any);
 
-            if (result.success) {
-                setMessage({ type: 'success', text: result.message });
-                // Reset form
-                setFirstName('');
-                setLastName('');
-                setPhone('');
-                setBirthDate('');
-                setAddress('');
-                setProgram(Program.General);
-                setTimeout(() => {
-                    setMessage(null);
-                    onClose();
-                }, 2000);
-            } else {
-                setMessage({ type: 'error', text: result.message });
-            }
-            setIsLoading(false);
-        }, 1000);
+        if (result.success) {
+            setMessage({ type: 'success', text: result.message });
+            // Reset form
+            setFirstName('');
+            setLastName('');
+            setPhone('');
+            setBirthDate('');
+            setAddress('');
+            setProgram(Program.General);
+            setTimeout(() => {
+                setMessage(null);
+                onClose();
+            }, 2000);
+        } else {
+            setMessage({ type: 'error', text: result.message });
+        }
+        setIsLoading(false);
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div className="bg-white p-6 sm:p-8 rounded-lg shadow-xl max-w-2xl w-full relative transform transition-all">
                 <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>

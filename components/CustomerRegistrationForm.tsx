@@ -14,7 +14,7 @@ const CustomerRegistrationForm: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName || !lastName || !phone || !program || !appointmentDate) {
       setMessage({ type: 'error', text: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน' });
@@ -24,34 +24,32 @@ const CustomerRegistrationForm: React.FC = () => {
     setIsLoading(true);
     setMessage(null);
 
-    setTimeout(() => {
-      const result = addLead({
-        firstName,
-        lastName,
-        phone,
-        birthDate: birthDate || null,
-        address,
-        program,
-        appointmentDate: appointmentDate || null,
-        adminSubmitter: 'Web Registration',
-        assignedSales: '', // Let context handle auto-assignment
-      }, true); // isFromAdmin = true to trigger round-robin
+    const result = await addLead({
+      first_name: firstName,
+      last_name: lastName,
+      phone,
+      birth_date: birthDate || null,
+      address,
+      program,
+      appointment_date: appointmentDate || null,
+      admin_submitter: 'Web Registration',
+      assigned_sales_name: '', // Let context handle auto-assignment
+    } as any);
 
-      if (result.success) {
-        setMessage({ type: 'success', text: `ลงทะเบียนสำเร็จ! ทีมงานจะติดต่อกลับเร็วที่สุด` });
-        setFirstName('');
-        setLastName('');
-        setPhone('');
-        setBirthDate('');
-        setAddress('');
-        setProgram(Program.General);
-        setAppointmentDate('');
-        setTimeout(() => setMessage(null), 5000);
-      } else {
-        setMessage({ type: 'error', text: result.message });
-      }
-      setIsLoading(false);
-    }, 1000);
+    if (result.success) {
+      setMessage({ type: 'success', text: `ลงทะเบียนสำเร็จ! ทีมงานจะติดต่อกลับเร็วที่สุด` });
+      setFirstName('');
+      setLastName('');
+      setPhone('');
+      setBirthDate('');
+      setAddress('');
+      setProgram(Program.General);
+      setAppointmentDate('');
+      setTimeout(() => setMessage(null), 5000);
+    } else {
+      setMessage({ type: 'error', text: result.message });
+    }
+    setIsLoading(false);
   };
 
   return (

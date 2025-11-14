@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useLeads } from '../services/LeadContext';
-// FIX: Imported the `Program` enum to resolve reference errors.
-import { Lead, Program } from '../types';
+import { Lead, Program, CallStatus } from '../types';
 import { useAuth } from '../services/AuthContext';
 import AddLeadModal from './AddLeadModal';
 import LeadDetailModal from './LeadDetailModal';
@@ -17,11 +16,12 @@ const TaskListItem: React.FC<{ lead: Lead, onSelect: (lead: Lead) => void }> = (
     
     const urgency = getUrgency();
 
-    const isToday = (date: Date) => {
+    const isToday = (dateStr: string) => {
         const today = new Date();
-        return date.getDate() === today.getDate() &&
-               date.getMonth() === today.getMonth() &&
-               date.getFullYear() === today.getFullYear();
+        const date = new Date(dateStr);
+        return date.getUTCDate() === today.getUTCDate() &&
+               date.getUTCMonth() === today.getUTCMonth() &&
+               date.getUTCFullYear() === today.getUTCFullYear();
     }
 
     return (
@@ -33,7 +33,7 @@ const TaskListItem: React.FC<{ lead: Lead, onSelect: (lead: Lead) => void }> = (
                 ติดต่อ (โทร)
             </td>
             <td className="px-5 py-4 text-sm text-gray-800">
-                <div className="font-semibold">{lead.firstName} {lead.lastName}</div>
+                <div className="font-semibold">{lead.first_name} {lead.last_name}</div>
                 <div className="text-gray-500">{lead.phone}</div>
             </td>
             <td className="px-5 py-4 text-sm">
@@ -46,7 +46,7 @@ const TaskListItem: React.FC<{ lead: Lead, onSelect: (lead: Lead) => void }> = (
                 </div>
             </td>
              <td className="px-5 py-4 text-sm">
-                {isToday(lead.createdAt) && (
+                {isToday(lead.created_at) && (
                     <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-200 rounded-full">
                         Today
                     </span>
@@ -58,7 +58,7 @@ const TaskListItem: React.FC<{ lead: Lead, onSelect: (lead: Lead) => void }> = (
 
 
 const SalesView: React.FC = () => {
-    const { getLeadsBySalesId, leads: allLeads, getDashboardStats } = useLeads();
+    const { leads: allLeads } = useLeads();
     const { user, toggleSalesStatus } = useAuth();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -66,38 +66,52 @@ const SalesView: React.FC = () => {
 
     const salesPerson = user?.details;
     
-    const { goalStats } = useMemo(() => {
-        if (!salesPerson) return { goalStats: null };
-        return getDashboardStats(salesPerson.name);
-    }, [salesPerson, getDashboardStats, allLeads]);
-    
-    const leads = useMemo(() => {
-        if (salesPerson) {
-            return getLeadsBySalesId(salesPerson.id);
-        }
-        return [];
-    }, [salesPerson, getLeadsBySalesId, allLeads]);
+    const myLeads = useMemo(() => {
+        if (!salesPerson) return [];
+        return allLeads.filter(lead => 
+            lead.assigned_sales_id === salesPerson.id &&
+            lead.call_status !== CallStatus.ClosedWon &&
+            lead.call_status !== CallStatus.ClosedLost
+        ).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }, [allLeads, salesPerson]);
+
+    const goalStats = useMemo(() => {
+        if (!salesPerson) return null;
+        const relevantLeads = allLeads.filter(l => l.assigned_sales_id === salesPerson.id);
+        const totalSalesValue = relevantLeads
+            .filter(l => l.call_status === CallStatus.ClosedWon)
+            .reduce((sum, lead) => sum + lead.sale_value, 0);
+
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        return {
+            newCustomers: relevantLeads.filter(l => l.created_at > thirtyDaysAgo).length,
+            opportunities: relevantLeads.filter(l => [CallStatus.Contacted, CallStatus.Appointment, CallStatus.FollowUp, CallStatus.Negotiation, CallStatus.Quotation].includes(l.call_status)).length,
+            revenue: totalSalesValue,
+            profit: totalSalesValue * 0.6341, // Mock profit margin
+        };
+    }, [allLeads, salesPerson]);
 
     const filteredLeads = useMemo(() => {
         const today = new Date().toISOString().slice(0, 10);
         switch (activeTab) {
             case 'today':
-                return leads.filter(l => new Date(l.createdAt).toISOString().slice(0, 10) === today);
+                return myLeads.filter(l => l.created_at.slice(0, 10) === today);
             case 'followup':
-                return leads.filter(l => l.followUpDate === today);
+                return myLeads.filter(l => l.follow_up_date === today);
             case 'overdue':
-                return leads.filter(l => l.followUpDate && l.followUpDate < today);
+                return myLeads.filter(l => l.follow_up_date && l.follow_up_date < today);
             default:
-                return leads;
+                return myLeads;
         }
-    }, [leads, activeTab]);
+    }, [myLeads, activeTab]);
 
     if (!salesPerson || !goalStats) {
         return <p>Loading user...</p>;
     }
     
     const GoalProgressBar: React.FC<{title: string, value: number, goal: number, color: string}> = ({title, value, goal, color}) => {
-        const percentage = Math.min((value/goal) * 100, 100).toFixed(2);
+        const percentage = goal > 0 ? Math.min((value/goal) * 100, 100).toFixed(2) : 0;
         return (
              <div className="flex-1">
                 <div className="flex justify-between items-center">
@@ -141,17 +155,17 @@ const SalesView: React.FC = () => {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
                 <GoalProgressBar title="ลูกค้าใหม่" value={goalStats.newCustomers} goal={10} color="bg-green-500" />
                 <GoalProgressBar title="โอกาส" value={goalStats.opportunities} goal={10} color="bg-blue-500" />
-                <GoalProgressBar title="ยอดขาย" value={goalStats.revenue/1000} goal={490} color="bg-yellow-500" />
-                <GoalProgressBar title="กำไร" value={goalStats.profit/1000} goal={490} color="bg-purple-500" />
+                <GoalProgressBar title="ยอดขาย (พัน)" value={Math.round(goalStats.revenue/1000)} goal={490} color="bg-yellow-500" />
+                <GoalProgressBar title="กำไร (พัน)" value={Math.round(goalStats.profit/1000)} goal={490} color="bg-purple-500" />
             </div>
             
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="px-5 pt-4">
                      <div className="border-b border-gray-200">
                         <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-                            <button onClick={() => setActiveTab('today')} className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'today' ? 'border-primary text-primary-dark font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>งานติดตามวันนี้ ({leads.filter(l => new Date(l.createdAt).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)).length})</button>
-                            <button onClick={() => setActiveTab('followup')} className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'followup' ? 'border-primary text-primary-dark font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>งานติดตาม Follow up ({leads.filter(l => l.followUpDate === new Date().toISOString().slice(0, 10)).length})</button>
-                            <button onClick={() => setActiveTab('overdue')} className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'overdue' ? 'border-primary text-primary-dark font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>งานติดตามเกินกำหนด ({leads.filter(l => l.followUpDate && l.followUpDate < new Date().toISOString().slice(0, 10)).length})</button>
+                            <button onClick={() => setActiveTab('today')} className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'today' ? 'border-primary text-primary-dark font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>งานติดตามวันนี้ ({myLeads.filter(l => l.created_at.slice(0, 10) === new Date().toISOString().slice(0, 10)).length})</button>
+                            <button onClick={() => setActiveTab('followup')} className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'followup' ? 'border-primary text-primary-dark font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>งานติดตาม Follow up ({myLeads.filter(l => l.follow_up_date === new Date().toISOString().slice(0, 10)).length})</button>
+                            <button onClick={() => setActiveTab('overdue')} className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'overdue' ? 'border-primary text-primary-dark font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>งานติดตามเกินกำหนด ({myLeads.filter(l => l.follow_up_date && l.follow_up_date < new Date().toISOString().slice(0, 10)).length})</button>
                         </nav>
                     </div>
                 </div>
@@ -186,11 +200,13 @@ const SalesView: React.FC = () => {
                 </div>
             </div>
 
-            <AddLeadModal
-                isOpen={isAddModalOpen}
-                onClose={() => setIsAddModalOpen(false)}
-                salesPerson={salesPerson}
-            />
+            {isAddModalOpen && salesPerson && (
+                <AddLeadModal
+                    isOpen={isAddModalOpen}
+                    onClose={() => setIsAddModalOpen(false)}
+                    salesPerson={salesPerson}
+                />
+            )}
             
             {selectedLead && (
                 <LeadDetailModal

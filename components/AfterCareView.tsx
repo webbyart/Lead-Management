@@ -8,7 +8,7 @@ const AfterCareView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !serviceDate) {
       alert('กรุณากรอกข้อมูลให้ครบถ้วน');
@@ -18,17 +18,15 @@ const AfterCareView: React.FC = () => {
     setIsLoading(true);
     setMessage(null);
 
-    setTimeout(() => {
-      const baseDate = new Date(serviceDate);
-      addAppointments(customerName, baseDate, 'After Care');
-      
-      setMessage(`สร้าง 5 นัดหมายสำหรับคุณ ${customerName} สำเร็จ! (จำลองการสร้างใน Google Calendar)`);
-      setIsLoading(false);
-      
-      setCustomerName('');
-      setServiceDate('');
-      setTimeout(() => setMessage(null), 5000);
-    }, 1500);
+    const baseDate = new Date(serviceDate);
+    await addAppointments(customerName, baseDate, 'After Care', `after-care-${Date.now()}`);
+    
+    setMessage(`สร้าง 5 นัดหมายสำหรับคุณ ${customerName} สำเร็จ!`);
+    setIsLoading(false);
+    
+    setCustomerName('');
+    setServiceDate('');
+    setTimeout(() => setMessage(null), 5000);
   };
 
   return (
@@ -77,33 +75,27 @@ const AfterCareView: React.FC = () => {
             </form>
           </div>
 
-          {/* Appointments List Section */}
-           <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-800 mb-6 border-b pb-4 font-thai">Upcoming After-Care Appointments</h2>
-            {appointments.length > 0 ? (
-              <ul className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                {appointments.filter(a => a.assignedTo === 'After Care').map(appt => (
-                  <li key={appt.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-start space-x-4">
-                     <div className="flex-shrink-0 text-center">
-                        <p className="text-secondary font-bold text-lg">{appt.appointmentDate.toLocaleDateString('en-US', { day: '2-digit' })}</p>
-                        <p className="text-gray-500 text-xs">{appt.appointmentDate.toLocaleDateString('en-US', { month: 'short' })}</p>
-                    </div>
-                    <div>
-                        <p className="font-semibold text-gray-800">{appt.customerName}</p>
-                        <p className="text-sm text-gray-500">
-                          {appt.appointmentDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
-                          <span className="ml-2 px-2 py-0.5 bg-gray-200 text-gray-800 text-xs rounded-full">{appt.followUpType}</span>
+          {/* Appointment List Section */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 font-thai">Upcoming Follow-Ups</h2>
+            <ul className="space-y-3 h-[450px] overflow-y-auto pr-2">
+                {appointments.length > 0 ? (
+                [...appointments]
+                    .sort((a, b) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime())
+                    .map(appt => (
+                    <li key={appt.id} className="p-3 rounded-lg bg-indigo-50 border border-indigo-200">
+                        <p className="font-bold text-indigo-800">{appt.customer_name}</p>
+                        <p className="text-sm text-indigo-700">{appt.follow_up_type}</p>
+                        <p className="text-xs mt-1 font-medium text-gray-500">
+                            {new Date(appt.appointment_date).toLocaleString()}
                         </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-gray-500">No appointments scheduled yet.</p>
-              </div>
-            )}
-           </div>
+                    </li>
+                    ))
+                ) : (
+                    <p className="text-gray-500 text-center pt-16">No upcoming appointments.</p>
+                )}
+            </ul>
+          </div>
         </div>
     </div>
   );

@@ -11,58 +11,59 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({ lead, onClose }) => {
   const { updateLead, deleteLead } = useLeads();
   const [isLoading, setIsLoading] = useState(false);
   
-  // Form state
-  const [firstName, setFirstName] = useState(lead.firstName);
-  const [lastName, setLastName] = useState(lead.lastName);
+  // Form state using snake_case to match database schema
+  const [first_name, setFirstName] = useState(lead.first_name);
+  const [last_name, setLastName] = useState(lead.last_name);
   const [phone, setPhone] = useState(lead.phone);
-  const [birthDate, setBirthDate] = useState(lead.birthDate || '');
+  const [birth_date, setBirthDate] = useState(lead.birth_date || '');
   const [address, setAddress] = useState(lead.address);
   const [program, setProgram] = useState(lead.program);
-  const [status, setStatus] = useState(lead.callStatus);
-  const [saleValue, setSaleValue] = useState(lead.saleValue.toString());
+  const [call_status, setStatus] = useState(lead.call_status);
+  const [sale_value, setSaleValue] = useState(lead.sale_value.toString());
   const [notes, setNotes] = useState(lead.notes);
-  const [followUpDate, setFollowUpDate] = useState(lead.followUpDate || '');
+  const [follow_up_date, setFollowUpDate] = useState(lead.follow_up_date || '');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     setIsLoading(true);
     setMessage(null);
     const updates: Partial<Lead> = {
-      firstName, lastName, phone,
-      birthDate: birthDate || null,
-      address, program, callStatus: status,
-      saleValue: parseFloat(saleValue) || 0,
-      notes, followUpDate: followUpDate || null,
+      first_name,
+      last_name,
+      phone,
+      birth_date: birth_date || null,
+      address,
+      program,
+      call_status,
+      sale_value: parseFloat(sale_value) || 0,
+      notes,
+      follow_up_date: follow_up_date || null,
     };
 
-    setTimeout(() => {
-        const result = updateLead(lead.id, updates);
-        if (result.success) {
-            setMessage({ type: 'success', text: result.message });
-        } else {
-            setMessage({ type: 'error', text: result.message });
-        }
-        setIsLoading(false);
+    const result = await updateLead(lead.id, updates);
+    if (result.success) {
+        setMessage({ type: 'success', text: result.message });
         setTimeout(() => {
             setMessage(null);
             onClose();
         }, 1500);
-    }, 1000);
+    } else {
+        setMessage({ type: 'error', text: result.message });
+    }
+    setIsLoading(false);
   };
 
-  const handleDelete = () => {
-    if (window.confirm(`Are you sure you want to delete the lead for ${lead.firstName} ${lead.lastName}?`)) {
+  const handleDelete = async () => {
+    if (window.confirm(`Are you sure you want to delete the lead for ${lead.first_name} ${lead.last_name}?`)) {
         setIsLoading(true);
         setMessage(null);
-        setTimeout(() => {
-            const result = deleteLead(lead.id);
-            if (result.success) {
-                onClose();
-            } else {
-                setMessage({ type: 'error', text: result.message });
-                setIsLoading(false);
-            }
-        }, 1000);
+        const result = await deleteLead(lead.id);
+        if (result.success) {
+            onClose();
+        } else {
+            setMessage({ type: 'error', text: result.message });
+            setIsLoading(false);
+        }
     }
   }
   
@@ -86,11 +87,11 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({ lead, onClose }) => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">First Name</label>
-                                <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} className="mt-1 w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                <input type="text" value={first_name} onChange={e => setFirstName(e.target.value)} className="mt-1 w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Last Name</label>
-                                <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} className="mt-1 w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                <input type="text" value={last_name} onChange={e => setLastName(e.target.value)} className="mt-1 w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Phone</label>
@@ -98,7 +99,7 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({ lead, onClose }) => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Birth Date</label>
-                                <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="mt-1 w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                <input type="date" value={birth_date} onChange={e => setBirthDate(e.target.value)} className="mt-1 w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
                             </div>
                              <div>
                                 <label className="block text-sm font-medium text-gray-700">Program</label>
@@ -108,17 +109,17 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({ lead, onClose }) => {
                             </div>
                              <div>
                                 <label className="block text-sm font-medium text-gray-700">Status</label>
-                                <select value={status} onChange={(e) => setStatus(e.target.value as CallStatus)} className="mt-1 block w-full text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md">
+                                <select value={call_status} onChange={(e) => setStatus(e.target.value as CallStatus)} className="mt-1 block w-full text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md">
                                     {Object.values(CallStatus).map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                              <div>
                                 <label className="block text-sm font-medium text-gray-700">Sale Value</label>
-                                <input type="number" value={saleValue} onChange={e => setSaleValue(e.target.value)} className="mt-1 w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                <input type="number" value={sale_value} onChange={e => setSaleValue(e.target.value)} className="mt-1 w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
                             </div>
                              <div>
                                 <label className="block text-sm font-medium text-gray-700">Follow-Up Date</label>
-                                <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} className="mt-1 w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                <input type="date" value={follow_up_date} onChange={e => setFollowUpDate(e.target.value)} className="mt-1 w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
                             </div>
                             <div className="sm:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700">Address</label>
@@ -136,9 +137,9 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({ lead, onClose }) => {
                          <div className="bg-gray-50 p-4 rounded-lg border">
                              <h4 className="font-semibold text-gray-800 mb-2">ข้อมูล Lead</h4>
                              <div className="text-sm space-y-1 text-gray-600">
-                                 <p><strong>ผู้มอบหมาย:</strong> {lead.adminSubmitter}</p>
-                                 <p><strong>ได้รับเมื่อ:</strong> {new Date(lead.createdAt).toLocaleString()}</p>
-                                 <p><strong>เซลล์ผู้รับผิดชอบ:</strong> {lead.assignedSales}</p>
+                                 <p><strong>ผู้มอบหมาย:</strong> {lead.admin_submitter}</p>
+                                 <p><strong>ได้รับเมื่อ:</strong> {new Date(lead.created_at).toLocaleString()}</p>
+                                 <p><strong>เซลล์ผู้รับผิดชอบ:</strong> {lead.assigned_sales_name}</p>
                              </div>
                          </div>
                          <div className="bg-gray-50 p-4 rounded-lg border">
