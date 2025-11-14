@@ -1,0 +1,235 @@
+import React, { useState, useMemo } from 'react';
+import { UserRole, User } from './types';
+import AdminView from './components/AdminView';
+import SalesView from './components/SalesView';
+import AfterCareView from './components/AfterCareView';
+import SystemView from './components/SystemView';
+import CalendarView from './components/CalendarView';
+import LoginView from './components/LoginView';
+import AdminLoginView from './components/AdminLoginView';
+import CustomerRegistrationForm from './components/CustomerRegistrationForm';
+import { LeadProvider } from './services/LeadContext';
+import { AuthProvider, useAuth } from './services/AuthContext';
+import { 
+    ChartBarIcon, PresentationChartLineIcon, UsersIcon, CogIcon, CalendarIcon, LifebuoyIcon 
+} from './components/Icons';
+
+
+type MenuId = 'dashboard' | 'tasks' | 'customers' | 'calendar' | 'aftercare' | 'reports' | 'settings';
+
+interface MenuItem {
+    id: MenuId;
+    label: string;
+    icon: React.FC<{className?: string}>;
+    allowed: ('admin' | 'sales')[];
+}
+
+const menuItems: MenuItem[] = [
+    { id: 'dashboard', label: 'แผนบริหาร', icon: PresentationChartLineIcon, allowed: ['admin'] },
+    { id: 'tasks', label: 'งานติดตาม', icon: ChartBarIcon, allowed: ['admin', 'sales'] },
+    { id: 'calendar', label: 'ปฏิทิน', icon: CalendarIcon, allowed: ['admin', 'sales'] },
+    { id: 'aftercare', label: 'After-Care', icon: LifebuoyIcon, allowed: ['admin'] },
+    { id: 'customers', label: 'ลูกค้า', icon: UsersIcon, allowed: ['admin', 'sales'] },
+    { id: 'settings', label: 'ตั้งค่า', icon: CogIcon, allowed: ['admin'] },
+];
+
+const AppShell: React.FC = () => {
+    const { user, logout } = useAuth();
+    const defaultView: MenuId = user?.type === 'admin' ? 'dashboard' : 'tasks';
+    const [activeMenu, setActiveMenu] = useState<MenuId>(defaultView);
+
+    const availableMenuItems = useMemo(() => {
+        if (!user) return [];
+        return menuItems.filter(item => item.allowed.includes(user.type));
+    }, [user]);
+
+    const Header: React.FC = () => (
+        <header className="bg-primary sticky top-0 z-30 shadow-md">
+            <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between h-16">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <h1 className="text-2xl font-bold text-secondary font-thai">JUBILI</h1>
+                        </div>
+                        <span className="text-secondary font-semibold ml-4 pl-4 border-l border-amber-600/50">บริการงานขาย</span>
+                    </div>
+                    <div className="flex items-center">
+                        <div className="relative">
+                           <button className="p-2 text-secondary rounded-full hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-primary focus:ring-white">
+                                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-4-5.659V4a2 2 0 10-4 0v1.341A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                            </button>
+                        </div>
+                        <div className="relative ml-3">
+                            <div>
+                                <button onClick={logout} className="max-w-xs bg-gray-800 rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+                                    <span className="sr-only">Open user menu</span>
+                                    <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-white font-bold">
+                                        {user?.name.charAt(0).toUpperCase()}
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="ml-4 text-right">
+                           <p className="text-sm font-semibold text-secondary">{user?.name}</p>
+                           <p className="text-xs text-secondary/80">บริษัท ยูบิลลี่ จำกัด</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+    );
+
+    const Sidebar: React.FC = () => (
+        <aside className="w-64 bg-secondary flex flex-col fixed inset-y-0 z-20">
+            <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
+                <nav className="mt-16 flex-1 px-2 space-y-1">
+                    {availableMenuItems.map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => setActiveMenu(item.id)}
+                            className={`w-full group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors duration-150 ${
+                                activeMenu === item.id 
+                                ? 'bg-primary text-secondary' 
+                                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                            }`}
+                        >
+                            <item.icon className={`mr-3 flex-shrink-0 h-6 w-6 ${
+                                activeMenu === item.id ? 'text-secondary' : 'text-gray-400 group-hover:text-gray-300'
+                            }`} />
+                            <span className="font-thai">{item.label}</span>
+                             {activeMenu === item.id && <div className="absolute left-0 w-1 h-full bg-primary rounded-r-md"></div>}
+                        </button>
+                    ))}
+                </nav>
+            </div>
+        </aside>
+    );
+
+    const CurrentView = useMemo(() => {
+        if(user?.type === 'sales') return <SalesView />;
+
+        switch (activeMenu) {
+            case 'dashboard': return <AdminView />;
+            case 'tasks': return <SalesView />; // Admin can view all tasks
+            case 'aftercare': return <AfterCareView />;
+            case 'calendar': return <CalendarView />;
+            case 'settings': return <SystemView />;
+            case 'customers': return <div>Customers View Placeholder</div>;
+            case 'reports': return <div>Reports View Placeholder</div>;
+            default: return <AdminView />;
+        }
+    }, [activeMenu, user]);
+
+    return (
+        <div className="h-screen flex overflow-hidden bg-gray-100">
+            <Sidebar />
+            <div className="flex flex-col w-0 flex-1 overflow-hidden ml-64">
+                <Header />
+                <main className="flex-1 relative overflow-y-auto focus:outline-none">
+                    <div className="py-6 px-4 sm:px-6 lg:px-8">
+                        {CurrentView}
+                    </div>
+                </main>
+            </div>
+        </div>
+    );
+};
+
+
+const PublicShell: React.FC<{ onLoginRequest: (type: 'adminLogin' | 'salesLogin') => void }> = ({ onLoginRequest }) => {
+    const [activeTab, setActiveTab] = useState<'registration' | 'events'>('registration');
+
+     return (
+        <div className="min-h-screen bg-gray-100">
+            <header className="bg-white/80 backdrop-blur-md sticky top-0 z-10 shadow-sm">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div className="flex flex-col sm:flex-row justify-between items-center">
+                    <h1 className="text-3xl font-bold text-secondary font-thai">
+                       JUBILI <span className="text-primary">Lead Management</span>
+                    </h1>
+                     <div className="flex items-center space-x-2 mt-3 sm:mt-0">
+                         <button onClick={() => onLoginRequest('adminLogin')} className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-gray-900 transition-colors text-sm font-medium">
+                            Admin Login
+                        </button>
+                        <button onClick={() => onLoginRequest('salesLogin')} className="px-4 py-2 bg-primary hover:bg-primary-dark text-secondary rounded-lg transition-colors text-sm font-medium">
+                            Sales Login
+                        </button>
+                    </div>
+                </div>
+              </div>
+            </header>
+             <main>
+                <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+                  <div className="mb-8">
+                        <div className="flex justify-center border-b border-gray-200">
+                            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                                <button
+                                    onClick={() => setActiveTab('registration')}
+                                    className={`${
+                                        activeTab === 'registration'
+                                        ? 'border-primary text-primary-dark'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg transition-colors font-thai`}
+                                >
+                                    ลงทะเบียนรับบริการ
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('events')}
+                                    className={`${
+                                        activeTab === 'events'
+                                        ? 'border-primary text-primary-dark'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg transition-colors font-thai`}
+                                >
+                                    Upcoming Events
+                                </button>
+                            </nav>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        {activeTab === 'registration' && <CustomerRegistrationForm />}
+                        {activeTab === 'events' && (
+                            <div className="bg-white p-6 rounded-2xl shadow-lg">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-4 font-thai">Upcoming Events</h2>
+                                <CalendarView />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
+}
+
+const AppContent: React.FC = () => {
+  const { user } = useAuth();
+  const [view, setView] = useState<'public' | 'adminLogin' | 'salesLogin'>('public');
+
+  if (user) {
+    return <AppShell />;
+  }
+  
+  // No user logged in
+  switch (view) {
+      case 'adminLogin':
+          return <AdminLoginView onBack={() => setView('public')} />;
+      case 'salesLogin':
+          return <LoginView onBack={() => setView('public')} />;
+      case 'public':
+      default:
+          return <PublicShell onLoginRequest={(type) => setView(type)} />;
+  }
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <LeadProvider>
+        <AppContent />
+      </LeadProvider>
+    </AuthProvider>
+  );
+}
+
+export default App;

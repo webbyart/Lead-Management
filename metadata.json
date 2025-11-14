@@ -1,0 +1,5 @@
+{
+  "name": "Lead Management & After Care Automation",
+  "description": "A web application simulating a Lead Management and After Care system, originally designed with Google Apps Script and LINE. This app demonstrates the core workflows for Admins, Sales, and After Care teams.",
+  "requestFramePermissions": []
+}
